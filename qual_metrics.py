@@ -1,4 +1,3 @@
-# qual_metrics.py
 import os
 import json
 import pandas as pd
@@ -27,14 +26,12 @@ def classify_batch(transcripts):
     Classifies a batch of transcripts using Gemini API.
     Ensures JSON-only responses and sanitizes results.
     """
-    # Normalize
     cleaned = []
     for t in transcripts:
         if not isinstance(t, str):
             t = "" if t is None else str(t)
         cleaned.append(t.strip())
 
-    # Build prompt
     prompt = f"""
 Classify each transcript into one of these categories:
 
@@ -62,16 +59,16 @@ Transcripts:
         print("Gemini Error:", e)
         return ["Other"] * len(transcripts)
 
-    # Validate
     final = [c if c in CALL_CATEGORIES else "Other" for c in result]
     return final
 
 
-def generate_qualitative_metrics(df: pd.DataFrame, transcript_col: str = "transcript", progress_callback=None) -> pd.DataFrame:
+def generate_qualitative_metrics(df: pd.DataFrame, transcript_col: str = "transcript", progress_bar=None, status_text=None) -> pd.DataFrame:
     """
     Adds a 'Call Type' column using batched Gemini classification.
     Uses a cache to avoid reprocessing the same transcripts.
-    Optional progress_callback(batch_num, total_batches) tracks batch progress.
+    progress_bar: Streamlit progress bar object (updated as batches complete).
+    status_text: Streamlit text container to show loading status.
     """
     df = df.copy()
     transcripts = df[transcript_col].tolist()
@@ -88,21 +85,34 @@ def generate_qualitative_metrics(df: pd.DataFrame, transcript_col: str = "transc
 
     # Batch processing
     BATCH_SIZE = 30
-    total_batches = (len(to_process_idx) + BATCH_SIZE - 1) // BATCH_SIZE
+    total_batches = max(1, (len(to_process_idx) + BATCH_SIZE - 1) // BATCH_SIZE)
 
-    for batch_num, start in enumerate(range(0, len(to_process_idx), BATCH_SIZE)):
-        batch_idx = to_process_idx[start:start + BATCH_SIZE]
-        batch_transcripts = [transcripts[i] for i in batch_idx]
+    if len(to_process_idx) == 0:
+        if progress_bar:
+            progress_bar.progress(100)
+        if status_text:
+            status_text.text("✓ Loading qualitative data (all cached)...")
+    else:
+        if status_text:
+            status_text.text(f"🔄 Processing {len(to_process_idx)} transcripts in {total_batches} batches...")
 
-        batch_results = classify_batch(batch_transcripts)
+        for batch_num, start in enumerate(range(0, len(to_process_idx), BATCH_SIZE)):
+            batch_idx = to_process_idx[start:start + BATCH_SIZE]
+            batch_transcripts = [transcripts[i] for i in batch_idx]
 
-        # Update cache
-        for idx, result in zip(batch_idx, batch_results):
-            cache[transcripts[idx]] = result
+            batch_results = classify_batch(batch_transcripts)
 
-        # Progress callback
-        if progress_callback:
-            progress_callback(batch_num + 1, total_batches)
+            # Update cache
+            for idx, result in zip(batch_idx, batch_results):
+                cache[transcripts[idx]] = result
+
+            # Update progress and status
+            if progress_bar:
+                progress_percent = 20 + int(80 * (batch_num + 1) / total_batches)
+                progress_bar.progress(min(progress_percent, 100))
+
+            if status_text:
+                status_text.text(f"🔄 Processing batch {batch_num + 1} of {total_batches}...")
 
     # Save cache
     with open(CACHE_FILE, "w", encoding="utf-8") as f:
