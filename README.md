@@ -11,6 +11,7 @@ This project analyzes call logs from dental practices to provide actionable insi
 - **Booking Conversion**: Appointment scheduling success rates and patterns
 - **Call Quality**: AI-generated sentiment analysis and quality observations
 - **Temporal Trends**: Daily and hourly call volume analysis
+- **Date Filters**: Analyse call patterns in custom date periods
 
 The dashboard is built with Streamlit for interactive exploration and uses the Gemini API for intelligent transcript analysis.
 
@@ -161,6 +162,10 @@ The dashboard will open in your browser at `http://localhost:8501`
 - An interactive final table with filters to identify necessary details
 - All call details with classifications, sentiment, and quality observations
 
+### **📅 Date Period Filters Sidebar**
+- Filter complete dashboard to analyse data within a custom period
+- Analyse and understand activity during peak periods, over the length of a week, etc.
+
 ---
 
 ### **Caching System:**
@@ -217,8 +222,8 @@ streamlit run main.py
 | **Booking Status** | Track successful bookings vs obstacles encountered | Troubleshoot barriers, improve booking conversion |
 
 **Sources**: 
-- [Progressive Dental Marketing - The 3 Major Front Desk KPIs](https://www.progressivedentalmarketing.com)
-- [WelcomeWare - Keys To Front Desk Success: KPIs, Data, And Best Practices](https://www.welcomeware.com)
+- [Progressive Dental Marketing - The 3 Major Front Desk KPIs](https://www.progressivedentalmarketing.com/dental-advice/the-3-major-front-desk-kpis-for-a-dental-practice/)
+- [WelcomeWare - Keys To Front Desk Success: KPIs, Data, And Best Practices](https://www.welcomeware.live/keys-to-front-desk-success-kpis-data-and-best-practices/)
 
 ---
 
@@ -235,11 +240,10 @@ streamlit run main.py
 | **Call Quality & Performance** | Front desk quality directly impacts case acceptance rates and patient lifetime value | Set standards, identify top performers, create training programs |
 
 **Sources**:
-- [Databox - Dental KPI Dashboard: 12 Metrics and KPIs](https://databox.com/kpi/dental-kpi-dashboard)
-- [MGE Online - 12 Key Performance Indicators for Dental Practice](https://www.mgeonline.com)
-- [Dandy - Dental Practice KPIs: What to Track and How](https://www.dandy.com)
-- [Dental Economics - The 6 Critical KPIs for Dentists (Levin Group)](https://www.dentaleconomics.com)
-- [Progressive Dental Marketing - Converting Phone Inquiries into Scheduled Appointments](https://www.progressivedentalmarketing.com)
+- [Databox - Dental KPI Dashboard: 12 Metrics and KPIs](https://databox.com/dental-kpi-dashboard)
+- [MGE Online - 12 Key Performance Indicators for Dental Practice](https://www.mgeonline.com/2019/11-key-performance-indicators-for-a-dental-practice/)
+- [Dandy - Dental Practice KPIs: What to Track and How](https://www.meetdandy.com/learning-center/articles/dental-practice-kpis/)
+- [Dental Economics - The 6 Critical KPIs for Dentists (Levin Group)](https://www.dentaleconomics.com/practice/systems/article/14207810/the-6-critical-key-performance-indicators-for-dentists)
 
 ---
 
