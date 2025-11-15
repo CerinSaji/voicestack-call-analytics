@@ -37,7 +37,6 @@ voicestack-call-analytics/
 ├── main.py                          # Main Streamlit app & dashboard UI
 ├── quant_metrics.py                 # Quantitative metrics calculation
 ├── qual_metrics.py                  # Qualitative metrics (AI analysis)
-└── loading_facts.py                 # contains random dental business facts from genuine sources
 │
 ├── call_logs.csv                    # Call dataset (not included in repo)
 ├── qualitative_cache.json           # AI analysis cache (generated on first run)
@@ -151,12 +150,16 @@ The dashboard will open in your browser at `http://localhost:8501`
 ### **🤖 Qualitative Analysis Section**
 - AI-generated call type classifications (bar chart)
 - Sentiment distribution (Positive/Neutral/Negative)
-- All call details with classifications, sentiment, and quality observations
+- Quality observations made on agents' interactions with patients
 
 ### **📅 Booking Conversion Metrics Section**
 - Booking confirmation rate, attempted bookings, and total scheduling calls
 - Booking status trends by hour
 - Summary table for scheduling calls only
+
+### **📊 Final Overview Table with filters**
+- An interactive final table with filters to identify necessary details
+- All call details with classifications, sentiment, and quality observations
 
 ---
 
