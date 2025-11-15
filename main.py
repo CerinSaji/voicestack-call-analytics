@@ -4,6 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import time
+import threading
 from quant_metrics import calculate_quantitative_metrics
 from qual_metrics import generate_qualitative_metrics
 from loading_facts import DENTAL_FACTS
@@ -17,29 +18,40 @@ progress_bar = st.empty()
 status_text = st.empty()
 fact_container = st.empty()
 
-# Rotating facts during load
-fact_index = 0
-max_facts = len(DENTAL_FACTS)
+# Rotating facts every 6 seconds
+def rotate_facts():
+    """Display rotating facts during loading."""
+    fact_index = 0
+    start_time = time.time()
+    
+    while True:
+        elapsed = time.time() - start_time
+        fact_index = int(elapsed / 6) % len(DENTAL_FACTS)
+        current_fact = DENTAL_FACTS[fact_index]
+        
+        fact_container.markdown(
+            f"""
+            <div style='text-align:center; padding: 20px; background-color: #f0f8ff; border-radius: 10px; margin-top: 20px;'>
+                <h3 style='color: #1f77b4;'>{current_fact['emoji']} Did You Know?</h3>
+                <p style='font-size: 18px; color: #333; font-style: italic;'>{current_fact['quote']}</p>
+                <p style='font-size: 12px; color: #666;'>📚 {current_fact['source']}</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        
+        time.sleep(1)
 
+# Display initial loading screen
 with loading_container.container():
     st.markdown("<h1 style='text-align:center; font-size:60px;'>📞 Call Analytics Dashboard</h1>", unsafe_allow_html=True)
 
 progress_bar.progress(0)
 status_text.text("📊 Loading quantitative data...")
 
-# Display initial fact
-current_fact = DENTAL_FACTS[fact_index % max_facts]
-fact_container.markdown(
-    f"""
-    <div style='text-align:center; padding: 20px; background-color: #f0f8ff; border-radius: 10px; margin-top: 20px;'>
-        <h3 style='color: #1f77b4;'>{current_fact['emoji']} Did You Know?</h3>
-        <p style='font-size: 18px; color: #333; font-style: italic;'>{current_fact['quote']}</p>
-        <p style='font-size: 12px; color: #666;'>📚 {current_fact['source']}</p>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-fact_index += 1
+# Start rotating facts in a separate thread
+fact_thread = threading.Thread(target=rotate_facts, daemon=True)
+fact_thread.start()
 
 # --------------------------
 # Load Data
@@ -58,20 +70,6 @@ df["Call Time"] = pd.to_datetime(df["Call Time"])
 quant_metrics = calculate_quantitative_metrics(df)
 progress_bar.progress(20)
 status_text.text("🔄 Loading qualitative data in batches...")
-
-# Rotate fact while processing qualitative data
-current_fact = DENTAL_FACTS[fact_index % max_facts]
-fact_container.markdown(
-    f"""
-    <div style='text-align:center; padding: 20px; background-color: #f0f8ff; border-radius: 10px; margin-top: 20px;'>
-        <h3 style='color: #1f77b4;'>{current_fact['emoji']} Did You Know?</h3>
-        <p style='font-size: 18px; color: #333; font-style: italic;'>{current_fact['quote']}</p>
-        <p style='font-size: 12px; color: #666;'>📚 {current_fact['source']}</p>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-fact_index += 1
 
 # --------------------------
 # Qualitative metrics (progress bar will update inside)
@@ -118,77 +116,8 @@ with tab1:
 
     st.divider()
 
-st.title("📅 Booking Conversion Metrics")
-
-# Filter for scheduling calls only
-scheduling_calls = df_qual[df_qual["Call Type"] == "Appointment Scheduling / Rescheduling"].copy()
-
-if len(scheduling_calls) == 0:
-    st.warning("No scheduling calls found in the dataset.")
-else:
-    total_scheduling = len(scheduling_calls)
-    confirmed = len(scheduling_calls[scheduling_calls["Booking Status"] == "Booking Confirmed"])
-    attempted = len(scheduling_calls[scheduling_calls["Booking Status"] == "Booking Attempted"])
-    
-    # Calculate rates
-    confirmation_rate = (confirmed / total_scheduling) * 100
-    attempt_rate = (attempted / total_scheduling) * 100
-    
-    # KPI Cards
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric("📅 Total Scheduling Calls", total_scheduling)
-    with col2:
-        st.metric("✅ Bookings Confirmed", confirmed, f"{confirmation_rate:.1f}%")
-    with col3:
-        st.metric("⏳ Bookings Attempted", attempted, f"{attempt_rate:.1f}%")
-    with col4:
-        st.metric("📊 Confirmation Rate", f"{confirmation_rate:.1f}%")
-    
-    st.divider()
-    
-    # Booking Status Distribution
-    st.subheader("Booking Status Distribution (Scheduling Calls Only)")
-    booking_status_counts = scheduling_calls["Booking Status"].value_counts().reset_index()
-    booking_status_counts.columns = ["Booking Status", "Count"]
-    booking_status_counts["Percentage"] = (booking_status_counts["Count"] / total_scheduling * 100).round(1)
-    
-    fig_booking = px.pie(
-        booking_status_counts,
-        values="Count",
-        names="Booking Status",
-        color_discrete_map={"Booking Confirmed": "#2ca02c", "Booking Attempted": "#ff7f0e", "N/A": "#d62728"},
-        title="Booking Status Breakdown"
-    )
-    st.plotly_chart(fig_booking, use_container_width=True)
-    
-    st.divider()
-    
-    st.subheader("Booking Status by Hour of Day")
-    
-    scheduling_calls["Hour of Day"] = scheduling_calls["Call Time"].dt.hour
-    booking_by_hour = pd.crosstab(scheduling_calls["Hour of Day"], scheduling_calls["Booking Status"])
-    booking_by_hour = booking_by_hour.reset_index()
-    
-    fig_booking_hour = px.bar(
-        booking_by_hour,
-        x="Hour of Day",
-        y=booking_by_hour.columns[1:],
-        barmode="stack",
-        title="Booking Status Distribution by Hour",
-        labels={"value": "Number of Calls", "variable": "Booking Status"},
-        color_discrete_map={"Booking Confirmed": "#2ca02c", "Booking Attempted": "#ff7f0e", "N/A": "#d62728"}
-    )
-    fig_booking_hour.update_layout(height=450, hovermode="x unified")
-    st.plotly_chart(fig_booking_hour, use_container_width=True)
-    
-    st.divider()
-    
-    st.subheader("Booking Status Summary Table (Scheduling Calls Only)")
-    st.dataframe(booking_status_counts, use_container_width=True, hide_index=True)
-
-    st.subheader("Summary Metrics Table")
-    summary_df = pd.DataFrame({
+st.title("Summary Metrics Table")
+summary_df = pd.DataFrame({
         "Total Calls": [quant_metrics["total_calls"]],
         "Answered Calls": [quant_metrics["answered_calls"]],
         "Total Missed Calls": [quant_metrics["total_missed_calls"]],
@@ -198,7 +127,7 @@ else:
         "Voicemail Rate (% of missed)": [f"{quant_metrics['voicemail_rate']:.2f}"],
         "Abandon Rate (%)": [f"{quant_metrics['abandon_rate']:.2f}"],
     })
-    st.dataframe(summary_df, use_container_width=True)
+st.dataframe(summary_df, use_container_width=True)
 
 # ============================================
 # TAB 2: DURATION & DIRECTION
@@ -377,7 +306,7 @@ with tab5:
 # QUALITATIVE ANALYSIS SECTION (Below all tabs)
 # ============================================
 st.divider()
-st.title("🤖 Qualitative Analysis")
+st.title("Qualitative Analysis")
 
 st.subheader("AI-Generated Call Type Classifications")
 call_type_counts = df_qual["Call Type"].value_counts().reset_index()
@@ -397,6 +326,66 @@ fig_call_type.update_traces(textposition="outside")
 fig_call_type.update_xaxes(tickangle=45)
 fig_call_type.update_layout(height=450)
 st.plotly_chart(fig_call_type, use_container_width=True)
+
+st.divider()
+
+st.title("📅 Booking Conversion Metrics")
+
+# Filter for scheduling calls only
+scheduling_calls = df_qual[df_qual["Call Type"] == "Appointment Scheduling / Rescheduling"].copy()
+
+if len(scheduling_calls) == 0:
+    st.warning("No scheduling calls found in the dataset.")
+else:
+    total_scheduling = len(scheduling_calls)
+    confirmed = len(scheduling_calls[scheduling_calls["Booking Status"] == "Booking Confirmed"])
+    attempted = len(scheduling_calls[scheduling_calls["Booking Status"] == "Booking Attempted"])
+    
+    # Calculate rates
+    confirmation_rate = (confirmed / total_scheduling) * 100
+    attempt_rate = (attempted / total_scheduling) * 100
+    
+    # KPI Cards
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("📅 Total Scheduling Calls", total_scheduling)
+    with col2:
+        st.metric("✅ Bookings Confirmed", confirmed, f"{confirmation_rate:.1f}%")
+    with col3:
+        st.metric("⏳ Bookings Attempted", attempted, f"{attempt_rate:.1f}%")
+    with col4:
+        st.metric("📊 Confirmation Rate", f"{confirmation_rate:.1f}%")
+    
+    st.divider()
+    
+    # Booking Status Distribution
+    booking_status_counts = scheduling_calls["Booking Status"].value_counts().reset_index()
+    booking_status_counts.columns = ["Booking Status", "Count"]
+    booking_status_counts["Percentage"] = (booking_status_counts["Count"] / total_scheduling * 100).round(1)
+    
+    
+    st.subheader("Booking Status by Hour of Day")
+    
+    scheduling_calls["Hour of Day"] = scheduling_calls["Call Time"].dt.hour
+    booking_by_hour = pd.crosstab(scheduling_calls["Hour of Day"], scheduling_calls["Booking Status"])
+    booking_by_hour = booking_by_hour.reset_index()
+    
+    fig_booking_hour = px.bar(
+        booking_by_hour,
+        x="Hour of Day",
+        y=booking_by_hour.columns[1:],
+        barmode="stack",
+        title="Booking Status Distribution by Hour",
+        labels={"value": "Number of Calls", "variable": "Booking Status"},
+        color_discrete_map={"Booking Confirmed": "#2ca02c", "Booking Attempted": "#ff7f0e", "N/A": "#d62728"}
+    )
+    fig_booking_hour.update_layout(height=450, hovermode="x unified")
+    st.plotly_chart(fig_booking_hour, use_container_width=True)
+    
+    st.divider()
+    
+    st.subheader("Booking Status Summary Table (Scheduling Calls Only)")
+    st.dataframe(booking_status_counts, use_container_width=True, hide_index=True)
 
 st.divider()
 
@@ -433,16 +422,6 @@ fig_sentiment = px.pie(
     title="Sentiment Distribution"
 )
 st.plotly_chart(fig_sentiment, use_container_width=True)
-
-st.divider()
-
-st.subheader("🎯 Top Quality Themes")
-
-# Extract and count quality observation themes
-quality_obs = df_qual["Quality Observation"].value_counts().head(10)
-st.write("**Most Common Quality Observations:**")
-for i, (obs, count) in enumerate(quality_obs.items(), 1):
-    st.write(f"{i}. **{count} calls** - {obs}")
 
 st.divider()
 
