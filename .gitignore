@@ -9,5 +9,8 @@ __pycache__/
 .vscode/
 
 test.py
+# qualitative cache files
 qualitative_cache.json
 qualitative_cache_copy.json
+#dataset
+call_logs.csv 
