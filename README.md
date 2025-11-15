@@ -153,7 +153,6 @@ The dashboard will open in your browser at `http://localhost:8501`
 
 ### **📅 Booking Conversion Metrics Section**
 - Booking confirmation rate, attempted bookings, and total scheduling calls
-- Booking status distribution (pie chart)
 - Booking status trends by hour
 - Summary table for scheduling calls only
 

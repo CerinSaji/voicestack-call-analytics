@@ -112,46 +112,6 @@ else:
         st.metric("📊 Confirmation Rate", f"{confirmation_rate:.1f}%")
     
     st.divider()
-    
-    # Booking Status Distribution
-    st.subheader("Booking Status Distribution (Scheduling Calls Only)")
-    booking_status_counts = scheduling_calls["Booking Status"].value_counts().reset_index()
-    booking_status_counts.columns = ["Booking Status", "Count"]
-    booking_status_counts["Percentage"] = (booking_status_counts["Count"] / total_scheduling * 100).round(1)
-    
-    fig_booking = px.pie(
-        booking_status_counts,
-        values="Count",
-        names="Booking Status",
-        color_discrete_map={"Booking Confirmed": "#2ca02c", "Booking Attempted": "#ff7f0e", "N/A": "#d62728"},
-        title="Booking Status Breakdown"
-    )
-    st.plotly_chart(fig_booking, use_container_width=True)
-    
-    st.divider()
-    
-    st.subheader("Booking Status by Hour of Day")
-    
-    scheduling_calls["Hour of Day"] = scheduling_calls["Call Time"].dt.hour
-    booking_by_hour = pd.crosstab(scheduling_calls["Hour of Day"], scheduling_calls["Booking Status"])
-    booking_by_hour = booking_by_hour.reset_index()
-    
-    fig_booking_hour = px.bar(
-        booking_by_hour,
-        x="Hour of Day",
-        y=booking_by_hour.columns[1:],
-        barmode="stack",
-        title="Booking Status Distribution by Hour",
-        labels={"value": "Number of Calls", "variable": "Booking Status"},
-        color_discrete_map={"Booking Confirmed": "#2ca02c", "Booking Attempted": "#ff7f0e", "N/A": "#d62728"}
-    )
-    fig_booking_hour.update_layout(height=450, hovermode="x unified")
-    st.plotly_chart(fig_booking_hour, use_container_width=True)
-    
-    st.divider()
-    
-    st.subheader("Booking Status Summary Table (Scheduling Calls Only)")
-    st.dataframe(booking_status_counts, use_container_width=True, hide_index=True)
 
     st.subheader("Summary Metrics Table")
     summary_df = pd.DataFrame({
@@ -165,6 +125,8 @@ else:
         "Abandon Rate (%)": [f"{quant_metrics['abandon_rate']:.2f}"],
     })
     st.dataframe(summary_df, use_container_width=True)
+
+    st.divider()
 
 # ============================================
 # TAB 2: DURATION & DIRECTION
@@ -343,7 +305,7 @@ with tab5:
 # QUALITATIVE ANALYSIS SECTION (Below all tabs)
 # ============================================
 st.divider()
-st.title("🤖 Qualitative Analysis")
+st.title("Qualitative Analysis")
 
 st.subheader("AI-Generated Call Type Classifications")
 call_type_counts = df_qual["Call Type"].value_counts().reset_index()
@@ -411,6 +373,45 @@ for i, (obs, count) in enumerate(quality_obs.items(), 1):
     st.write(f"{i}. **{count} calls** - {obs}")
 
 st.divider()
+# Booking Status Distribution
+st.subheader("Booking Status Distribution (Scheduling Calls Only)")
+booking_status_counts = scheduling_calls["Booking Status"].value_counts().reset_index()
+booking_status_counts.columns = ["Booking Status", "Count"]
+booking_status_counts["Percentage"] = (booking_status_counts["Count"] / total_scheduling * 100).round(1)
+    
+"""fig_booking = px.pie(
+        booking_status_counts,
+        values="Count",
+        names="Booking Status",
+        color_discrete_map={"Booking Confirmed": "#2ca02c", "Booking Attempted": "#ff7f0e", "N/A": "#d62728"},
+        title="Booking Status Breakdown"
+    )
+st.plotly_chart(fig_booking, use_container_width=True)"""
+    
+st.divider()
+    
+st.subheader("Booking Status by Hour of Day")
+    
+scheduling_calls["Hour of Day"] = scheduling_calls["Call Time"].dt.hour
+booking_by_hour = pd.crosstab(scheduling_calls["Hour of Day"], scheduling_calls["Booking Status"])
+booking_by_hour = booking_by_hour.reset_index()
+    
+fig_booking_hour = px.bar(
+        booking_by_hour,
+        x="Hour of Day",
+        y=booking_by_hour.columns[1:],
+        barmode="stack",
+        title="Booking Status Distribution by Hour",
+        labels={"value": "Number of Calls", "variable": "Booking Status"},
+        color_discrete_map={"Booking Confirmed": "#2ca02c", "Booking Attempted": "#ff7f0e", "N/A": "#d62728"}
+    )
+fig_booking_hour.update_layout(height=450, hovermode="x unified")
+st.plotly_chart(fig_booking_hour, use_container_width=True)
+    
+st.divider()
+    
+st.subheader("Booking Status Summary Table (Scheduling Calls Only)")
+st.dataframe(booking_status_counts, use_container_width=True, hide_index=True)
 
 # --------------------------
 # Call Details Table
