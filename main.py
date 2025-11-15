@@ -1,3 +1,4 @@
+# ============================================
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -63,7 +64,7 @@ st.markdown(
 
 # --------------------------
 # TABS for Organization
-tab1, tab2, tab3, tab4 = st.tabs(["📊 Overview", "⏱️ Duration & Direction", "👥 Contact Types", "📈 Trends"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Overview", "⏱️ Duration & Direction", "👥 Contact Types", "📈 Trends", "📞 Call Status"])
 
 # ============================================
 # TAB 1: OVERVIEW
@@ -82,6 +83,75 @@ with tab1:
         st.metric("❌ Abandon Rate", f"{quant_metrics['abandon_rate']:.2f}%", f"{quant_metrics['empty_missed_calls']} empty missed")
 
     st.divider()
+
+st.title("📅 Booking Conversion Metrics")
+
+# Filter for scheduling calls only
+scheduling_calls = df_qual[df_qual["Call Type"] == "Appointment Scheduling / Rescheduling"].copy()
+
+if len(scheduling_calls) == 0:
+    st.warning("No scheduling calls found in the dataset.")
+else:
+    total_scheduling = len(scheduling_calls)
+    confirmed = len(scheduling_calls[scheduling_calls["Booking Status"] == "Booking Confirmed"])
+    attempted = len(scheduling_calls[scheduling_calls["Booking Status"] == "Booking Attempted"])
+    
+    # Calculate rates
+    confirmation_rate = (confirmed / total_scheduling) * 100
+    attempt_rate = (attempted / total_scheduling) * 100
+    
+    # KPI Cards
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("📅 Total Scheduling Calls", total_scheduling)
+    with col2:
+        st.metric("✅ Bookings Confirmed", confirmed, f"{confirmation_rate:.1f}%")
+    with col3:
+        st.metric("⏳ Bookings Attempted", attempted, f"{attempt_rate:.1f}%")
+    with col4:
+        st.metric("📊 Confirmation Rate", f"{confirmation_rate:.1f}%")
+    
+    st.divider()
+    
+    # Booking Status Distribution
+    st.subheader("Booking Status Distribution (Scheduling Calls Only)")
+    booking_status_counts = scheduling_calls["Booking Status"].value_counts().reset_index()
+    booking_status_counts.columns = ["Booking Status", "Count"]
+    booking_status_counts["Percentage"] = (booking_status_counts["Count"] / total_scheduling * 100).round(1)
+    
+    fig_booking = px.pie(
+        booking_status_counts,
+        values="Count",
+        names="Booking Status",
+        color_discrete_map={"Booking Confirmed": "#2ca02c", "Booking Attempted": "#ff7f0e", "N/A": "#d62728"},
+        title="Booking Status Breakdown"
+    )
+    st.plotly_chart(fig_booking, use_container_width=True)
+    
+    st.divider()
+    
+    st.subheader("Booking Status by Hour of Day")
+    
+    scheduling_calls["Hour of Day"] = scheduling_calls["Call Time"].dt.hour
+    booking_by_hour = pd.crosstab(scheduling_calls["Hour of Day"], scheduling_calls["Booking Status"])
+    booking_by_hour = booking_by_hour.reset_index()
+    
+    fig_booking_hour = px.bar(
+        booking_by_hour,
+        x="Hour of Day",
+        y=booking_by_hour.columns[1:],
+        barmode="stack",
+        title="Booking Status Distribution by Hour",
+        labels={"value": "Number of Calls", "variable": "Booking Status"},
+        color_discrete_map={"Booking Confirmed": "#2ca02c", "Booking Attempted": "#ff7f0e", "N/A": "#d62728"}
+    )
+    fig_booking_hour.update_layout(height=450, hovermode="x unified")
+    st.plotly_chart(fig_booking_hour, use_container_width=True)
+    
+    st.divider()
+    
+    st.subheader("Booking Status Summary Table (Scheduling Calls Only)")
+    st.dataframe(booking_status_counts, use_container_width=True, hide_index=True)
 
     st.subheader("Summary Metrics Table")
     summary_df = pd.DataFrame({
@@ -235,6 +305,41 @@ with tab4:
     st.plotly_chart(fig_hourly_answered, use_container_width=True)
 
 # ============================================
+# TAB 5: CALL STATUS
+# ============================================
+with tab5:
+    st.subheader("Call Status Distribution by Hour of Day")
+
+    # Create dataframe with hour and call status
+    df_status_by_hour = df.copy()
+    df_status_by_hour["Hour of Day"] = df_status_by_hour["Call Time"].dt.hour
+
+    # Create pivot table: Hour x Call Status
+    status_by_hour = pd.crosstab(df_status_by_hour["Hour of Day"], df_status_by_hour["Call Status"])
+    status_by_hour = status_by_hour.reset_index()
+
+    # Stacked bar chart
+    fig_status_hour = px.bar(
+        status_by_hour,
+        x="Hour of Day",
+        y=status_by_hour.columns[1:],
+        barmode="stack",
+        title="Call Status Distribution Throughout the Day",
+        labels={"value": "Number of Calls", "variable": "Call Status"},
+        color_discrete_sequence=px.colors.qualitative.Set2
+    )
+    fig_status_hour.update_layout(height=450, hovermode="x unified")
+    st.plotly_chart(fig_status_hour, use_container_width=True)
+
+    st.divider()
+
+    st.subheader("Overall Call Status Summary")
+    call_status_counts = df["Call Status"].value_counts().reset_index()
+    call_status_counts.columns = ["Call Status", "Count"]
+    call_status_counts["Percentage"] = (call_status_counts["Count"] / call_status_counts["Count"].sum() * 100).round(1)
+    st.dataframe(call_status_counts, use_container_width=True, hide_index=True)
+
+# ============================================
 # QUALITATIVE ANALYSIS SECTION (Below all tabs)
 # ============================================
 st.divider()
@@ -259,9 +364,57 @@ fig_call_type.update_xaxes(tickangle=45)
 fig_call_type.update_layout(height=450)
 st.plotly_chart(fig_call_type, use_container_width=True)
 
+st.divider()
+
+st.subheader("😊 Sentiment Analysis")
+
+sentiment_counts = df_qual["Sentiment"].value_counts().reset_index()
+sentiment_counts.columns = ["Sentiment", "Count"]
+
+# Calculate percentages
+total_calls_qual = sentiment_counts["Count"].sum()
+sentiment_counts["Percentage"] = (sentiment_counts["Count"] / total_calls_qual * 100).round(1)
+
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    positive_count = sentiment_counts[sentiment_counts["Sentiment"] == "Positive"]["Count"].values
+    positive_count = positive_count[0] if len(positive_count) > 0 else 0
+    st.metric("😊 Positive", positive_count, f"{(positive_count/total_calls_qual*100):.1f}%")
+with col2:
+    neutral_count = sentiment_counts[sentiment_counts["Sentiment"] == "Neutral"]["Count"].values
+    neutral_count = neutral_count[0] if len(neutral_count) > 0 else 0
+    st.metric("😐 Neutral", neutral_count, f"{(neutral_count/total_calls_qual*100):.1f}%")
+with col3:
+    negative_count = sentiment_counts[sentiment_counts["Sentiment"] == "Negative"]["Count"].values
+    negative_count = negative_count[0] if len(negative_count) > 0 else 0
+    st.metric("😞 Negative", negative_count, f"{(negative_count/total_calls_qual*100):.1f}%")
+with col4:
+    st.metric("📞 Total Calls Analyzed", total_calls_qual)
+
+fig_sentiment = px.pie(
+    sentiment_counts,
+    values="Count",
+    names="Sentiment",
+    color_discrete_map={"Positive": "#2ca02c", "Neutral": "#1f77b4", "Negative": "#d62728"},
+    title="Sentiment Distribution"
+)
+st.plotly_chart(fig_sentiment, use_container_width=True)
+
+st.divider()
+
+st.subheader("🎯 Top Quality Themes")
+
+# Extract and count quality observation themes
+quality_obs = df_qual["Quality Observation"].value_counts().head(10)
+st.write("**Most Common Quality Observations:**")
+for i, (obs, count) in enumerate(quality_obs.items(), 1):
+    st.write(f"{i}. **{count} calls** - {obs}")
+
+st.divider()
+
 # --------------------------
 # Call Details Table
-st.subheader("Call Details with Classifications")
+st.subheader("📋 All Call Details with Classifications & Sentiment")
 
-with st.expander("View all call transcripts with AI classifications"):
-    st.dataframe(df_qual[["Call Time", "Call Direction", "Contact Type", "Call Type", "transcript"]], use_container_width=True)
+display_columns = ["Call Time", "Call Direction", "Contact Type", "Call Type", "Sentiment", "Booking Status", "Quality Observation", "transcript"]
+st.dataframe(df_qual[display_columns], use_container_width=True, hide_index=True)

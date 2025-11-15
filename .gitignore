@@ -9,3 +9,5 @@ __pycache__/
 .vscode/
 
 test.py
+qualitative_cache.json
+qualitative_cache_copy.json
