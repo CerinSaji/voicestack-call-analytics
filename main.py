@@ -36,10 +36,13 @@ quant_metrics = calculate_quantitative_metrics(df)
 progress_bar.progress(20)
 status_text.text("🔄 Loading qualitative data in batches...")
 
-# --------------------------
 # Qualitative metrics
 df_qual = generate_qualitative_metrics(df, progress_bar=progress_bar, status_text=status_text)
 df_qual["Call Time"] = pd.to_datetime(df_qual["Call Time"])
+
+# Initialize filtered dataframes (will be updated by sidebar filter)
+df_filtered = df.copy()
+df_qual_filtered = df_qual.copy()
 
 # --------------------------
 # Remove loading screen
@@ -48,34 +51,49 @@ progress_bar.empty()
 status_text.empty()
 
 # --------------------------
-# Dashboard Title
+# Dashboard Title & Filter in Sidebar
 st.title("📞 Call Analytics Dashboard")
 
+st.markdown(
+    """
+**Definitions:**  
+- 📞 **Answer Rate**: % of total calls answered by staff  
+- 🎙 **Voicemail Rate**: % of missed calls that left a voicemail  
+- ❌ **Abandon Rate**: % of calls missed without leaving a voicemail
+
+---
+💡 **Tip**: Use the **filter icon ≡** in the top-left to adjust the date range
+"""
+)
+
 # --------------------------
-# Date Range Filter
-st.subheader("🗓️ Filter by Date Range")
-
-col1, col2, col3 = st.columns([2, 2, 1])
-
-with col1:
+# Date Range Filter in Sidebar
+with st.sidebar:
+    st.subheader("🗓️ Date Range Filter")
+    
     start_date = st.date_input(
         "Start Date",
         value=df_qual["Call Time"].min().date(),
         min_value=df_qual["Call Time"].min().date(),
         max_value=df_qual["Call Time"].max().date()
     )
-
-with col2:
+    
     end_date = st.date_input(
         "End Date",
         value=df_qual["Call Time"].max().date(),
         min_value=df_qual["Call Time"].min().date(),
         max_value=df_qual["Call Time"].max().date()
     )
-
-with col3:
-    st.write("")
+    
     apply_filter = st.button("🔍 Apply Filter", use_container_width=True)
+    
+    st.divider()
+    
+    # Display filter status
+    st.write("**Filter Status**")
+    st.write(f"📅 {start_date.strftime('%B %d, %Y')} → {end_date.strftime('%B %d, %Y')}")
+    st.metric("📊 Calls", len(df_filtered))
+    st.metric("📈 % of Total", f"{(len(df_filtered)/len(df)*100):.1f}%")
 
 # Convert dates to datetime for filtering
 start_datetime = pd.to_datetime(start_date)
@@ -88,26 +106,6 @@ if apply_filter or start_date != df_qual["Call Time"].min().date() or end_date !
 else:
     df_filtered = df.copy()
     df_qual_filtered = df_qual.copy()
-
-# Display filter status
-col1, col2, col3 = st.columns(3)
-with col1:
-    st.metric("📅 Period", f"{start_date} to {end_date}")
-with col2:
-    st.metric("📊 Calls in Period", len(df_filtered))
-with col3:
-    st.metric("📈 % of Total", f"{(len(df_filtered)/len(df)*100):.1f}%")
-
-st.divider()
-
-st.markdown(
-    """
-**Definitions:**  
-- 📞 **Answer Rate**: % of total calls answered by staff  
-- 🎙 **Voicemail Rate**: % of missed calls that left a voicemail  
-- ❌ **Abandon Rate**: % of calls missed without leaving a voicemail
-"""
-)
 
 # Recalculate metrics for filtered data
 quant_metrics_filtered = calculate_quantitative_metrics(df_filtered)
