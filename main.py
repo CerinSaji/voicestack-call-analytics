@@ -1,25 +1,45 @@
-# ============================================
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import time
 from quant_metrics import calculate_quantitative_metrics
 from qual_metrics import generate_qualitative_metrics
+from loading_facts import DENTAL_FACTS
 
 st.set_page_config(page_title="Call Analytics Dashboard", layout="wide")
 
 # --------------------------
-# Loading Screen with Status Text
+# Loading Screen with Status Text & Rotating Facts
 loading_container = st.empty()
 progress_bar = st.empty()
 status_text = st.empty()
+fact_container = st.empty()
+
+# Rotating facts during load
+fact_index = 0
+max_facts = len(DENTAL_FACTS)
 
 with loading_container.container():
     st.markdown("<h1 style='text-align:center; font-size:60px;'>📞 Call Analytics Dashboard</h1>", unsafe_allow_html=True)
 
 progress_bar.progress(0)
 status_text.text("📊 Loading quantitative data...")
+
+# Display initial fact
+current_fact = DENTAL_FACTS[fact_index % max_facts]
+fact_container.markdown(
+    f"""
+    <div style='text-align:center; padding: 20px; background-color: #f0f8ff; border-radius: 10px; margin-top: 20px;'>
+        <h3 style='color: #1f77b4;'>{current_fact['emoji']} Did You Know?</h3>
+        <p style='font-size: 18px; color: #333; font-style: italic;'>{current_fact['quote']}</p>
+        <p style='font-size: 12px; color: #666;'>📚 {current_fact['source']}</p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+fact_index += 1
 
 # --------------------------
 # Load Data
@@ -38,6 +58,20 @@ df["Call Time"] = pd.to_datetime(df["Call Time"])
 quant_metrics = calculate_quantitative_metrics(df)
 progress_bar.progress(20)
 status_text.text("🔄 Loading qualitative data in batches...")
+
+# Rotate fact while processing qualitative data
+current_fact = DENTAL_FACTS[fact_index % max_facts]
+fact_container.markdown(
+    f"""
+    <div style='text-align:center; padding: 20px; background-color: #f0f8ff; border-radius: 10px; margin-top: 20px;'>
+        <h3 style='color: #1f77b4;'>{current_fact['emoji']} Did You Know?</h3>
+        <p style='font-size: 18px; color: #333; font-style: italic;'>{current_fact['quote']}</p>
+        <p style='font-size: 12px; color: #666;'>📚 {current_fact['source']}</p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+fact_index += 1
 
 # --------------------------
 # Qualitative metrics (progress bar will update inside)
@@ -112,6 +146,46 @@ else:
         st.metric("📊 Confirmation Rate", f"{confirmation_rate:.1f}%")
     
     st.divider()
+    
+    # Booking Status Distribution
+    st.subheader("Booking Status Distribution (Scheduling Calls Only)")
+    booking_status_counts = scheduling_calls["Booking Status"].value_counts().reset_index()
+    booking_status_counts.columns = ["Booking Status", "Count"]
+    booking_status_counts["Percentage"] = (booking_status_counts["Count"] / total_scheduling * 100).round(1)
+    
+    fig_booking = px.pie(
+        booking_status_counts,
+        values="Count",
+        names="Booking Status",
+        color_discrete_map={"Booking Confirmed": "#2ca02c", "Booking Attempted": "#ff7f0e", "N/A": "#d62728"},
+        title="Booking Status Breakdown"
+    )
+    st.plotly_chart(fig_booking, use_container_width=True)
+    
+    st.divider()
+    
+    st.subheader("Booking Status by Hour of Day")
+    
+    scheduling_calls["Hour of Day"] = scheduling_calls["Call Time"].dt.hour
+    booking_by_hour = pd.crosstab(scheduling_calls["Hour of Day"], scheduling_calls["Booking Status"])
+    booking_by_hour = booking_by_hour.reset_index()
+    
+    fig_booking_hour = px.bar(
+        booking_by_hour,
+        x="Hour of Day",
+        y=booking_by_hour.columns[1:],
+        barmode="stack",
+        title="Booking Status Distribution by Hour",
+        labels={"value": "Number of Calls", "variable": "Booking Status"},
+        color_discrete_map={"Booking Confirmed": "#2ca02c", "Booking Attempted": "#ff7f0e", "N/A": "#d62728"}
+    )
+    fig_booking_hour.update_layout(height=450, hovermode="x unified")
+    st.plotly_chart(fig_booking_hour, use_container_width=True)
+    
+    st.divider()
+    
+    st.subheader("Booking Status Summary Table (Scheduling Calls Only)")
+    st.dataframe(booking_status_counts, use_container_width=True, hide_index=True)
 
     st.subheader("Summary Metrics Table")
     summary_df = pd.DataFrame({
@@ -125,8 +199,6 @@ else:
         "Abandon Rate (%)": [f"{quant_metrics['abandon_rate']:.2f}"],
     })
     st.dataframe(summary_df, use_container_width=True)
-
-    st.divider()
 
 # ============================================
 # TAB 2: DURATION & DIRECTION
@@ -305,7 +377,7 @@ with tab5:
 # QUALITATIVE ANALYSIS SECTION (Below all tabs)
 # ============================================
 st.divider()
-st.title("Qualitative Analysis")
+st.title("🤖 Qualitative Analysis")
 
 st.subheader("AI-Generated Call Type Classifications")
 call_type_counts = df_qual["Call Type"].value_counts().reset_index()
@@ -373,49 +445,51 @@ for i, (obs, count) in enumerate(quality_obs.items(), 1):
     st.write(f"{i}. **{count} calls** - {obs}")
 
 st.divider()
-# Booking Status Distribution
-st.subheader("Booking Status Distribution (Scheduling Calls Only)")
-booking_status_counts = scheduling_calls["Booking Status"].value_counts().reset_index()
-booking_status_counts.columns = ["Booking Status", "Count"]
-booking_status_counts["Percentage"] = (booking_status_counts["Count"] / total_scheduling * 100).round(1)
-    
-"""fig_booking = px.pie(
-        booking_status_counts,
-        values="Count",
-        names="Booking Status",
-        color_discrete_map={"Booking Confirmed": "#2ca02c", "Booking Attempted": "#ff7f0e", "N/A": "#d62728"},
-        title="Booking Status Breakdown"
-    )
-st.plotly_chart(fig_booking, use_container_width=True)"""
-    
-st.divider()
-    
-st.subheader("Booking Status by Hour of Day")
-    
-scheduling_calls["Hour of Day"] = scheduling_calls["Call Time"].dt.hour
-booking_by_hour = pd.crosstab(scheduling_calls["Hour of Day"], scheduling_calls["Booking Status"])
-booking_by_hour = booking_by_hour.reset_index()
-    
-fig_booking_hour = px.bar(
-        booking_by_hour,
-        x="Hour of Day",
-        y=booking_by_hour.columns[1:],
-        barmode="stack",
-        title="Booking Status Distribution by Hour",
-        labels={"value": "Number of Calls", "variable": "Booking Status"},
-        color_discrete_map={"Booking Confirmed": "#2ca02c", "Booking Attempted": "#ff7f0e", "N/A": "#d62728"}
-    )
-fig_booking_hour.update_layout(height=450, hovermode="x unified")
-st.plotly_chart(fig_booking_hour, use_container_width=True)
-    
-st.divider()
-    
-st.subheader("Booking Status Summary Table (Scheduling Calls Only)")
-st.dataframe(booking_status_counts, use_container_width=True, hide_index=True)
 
 # --------------------------
-# Call Details Table
+# Call Details Table with Filters
 st.subheader("📋 All Call Details with Classifications & Sentiment")
 
+# Filters
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+    direction_filter = st.multiselect(
+        "📥 Call Direction",
+        options=df_qual["Call Direction"].unique(),
+        default=df_qual["Call Direction"].unique()
+    )
+
+with col2:
+    contact_filter = st.multiselect(
+        "👥 Contact Type",
+        options=df_qual["Contact Type"].unique(),
+        default=df_qual["Contact Type"].unique()
+    )
+
+with col3:
+    call_type_filter = st.multiselect(
+        "🏷️ Call Type",
+        options=df_qual["Call Type"].unique(),
+        default=df_qual["Call Type"].unique()
+    )
+
+with col4:
+    sentiment_filter = st.multiselect(
+        "😊 Sentiment",
+        options=df_qual["Sentiment"].unique(),
+        default=df_qual["Sentiment"].unique()
+    )
+
+# Apply filters
+filtered_df = df_qual[
+    (df_qual["Call Direction"].isin(direction_filter)) &
+    (df_qual["Contact Type"].isin(contact_filter)) &
+    (df_qual["Call Type"].isin(call_type_filter)) &
+    (df_qual["Sentiment"].isin(sentiment_filter))
+]
+
 display_columns = ["Call Time", "Call Direction", "Contact Type", "Call Type", "Sentiment", "Booking Status", "Quality Observation", "transcript"]
-st.dataframe(df_qual[display_columns], use_container_width=True, hide_index=True)
+st.dataframe(filtered_df[display_columns], use_container_width=True, hide_index=True)
+
+st.caption(f"Showing {len(filtered_df)} of {len(df_qual)} calls")

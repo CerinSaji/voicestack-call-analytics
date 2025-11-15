@@ -37,6 +37,7 @@ voicestack-call-analytics/
 ├── main.py                          # Main Streamlit app & dashboard UI
 ├── quant_metrics.py                 # Quantitative metrics calculation
 ├── qual_metrics.py                  # Qualitative metrics (AI analysis)
+└── loading_facts.py                 # contains random dental business facts from genuine sources
 │
 ├── call_logs.csv                    # Call dataset (not included in repo)
 ├── qualitative_cache.json           # AI analysis cache (generated on first run)
@@ -46,6 +47,7 @@ voicestack-call-analytics/
 │
 ├── requirements.txt                 # Python dependencies
 └── README.md                        # This file
+
 ```
 
 ---
